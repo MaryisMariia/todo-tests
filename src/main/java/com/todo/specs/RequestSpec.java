@@ -1,7 +1,7 @@
 package com.todo.specs;
 
 import io.qameta.allure.restassured.AllureRestAssured;
-import io.restassured.authentication.BasicAuthScheme;
+import io.restassured.authentication.PreemptiveBasicAuthScheme;
 import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.filter.log.RequestLoggingFilter;
 import io.restassured.filter.log.ResponseLoggingFilter;
@@ -10,17 +10,26 @@ import io.restassured.specification.RequestSpecification;
 
 import java.util.List;
 
+import static com.todo.constants.UserCreds.PASSWORD;
+import static com.todo.constants.UserCreds.USERNAME;
+
 public class RequestSpec {
     private RequestSpecBuilder requestSpecBuilder;
 
-    private static RequestSpecBuilder baseSpecBuilder() {
+    private final ContentType contentType;
+
+    public RequestSpec(ContentType contentType) {
+        this.contentType = contentType;
+    }
+
+    private RequestSpecBuilder baseSpecBuilder() {
         RequestSpecBuilder requestSpecBuilder = new RequestSpecBuilder();
         requestSpecBuilder.addFilters(List.of(
-                new RequestLoggingFilter(), new
-                ResponseLoggingFilter(),
+                new RequestLoggingFilter(),
+                new ResponseLoggingFilter(),
                 new AllureRestAssured()));
-        requestSpecBuilder.setContentType(ContentType.JSON);
-        requestSpecBuilder.setAccept(ContentType.JSON);
+        requestSpecBuilder.setContentType(contentType);
+        requestSpecBuilder.setAccept(ContentType.ANY);
         return requestSpecBuilder;
     }
 
@@ -28,11 +37,18 @@ public class RequestSpec {
         return baseSpecBuilder().build();
     }
 
-    public static RequestSpecification authSpec() {
-        BasicAuthScheme basicAuthScheme = new BasicAuthScheme();
-        basicAuthScheme.setUserName("admin");
-        basicAuthScheme.setPassword("admin");
-        baseSpecBuilder().setAuth(basicAuthScheme);
-        return baseSpecBuilder().build();
+    public RequestSpecification authSpec() {
+        return authSpec(USERNAME, PASSWORD);
+    }
+
+    public RequestSpecification authSpec(String username, String password) {
+        // Почему то не утсанавливается таким образом
+        PreemptiveBasicAuthScheme basicAuthScheme = new PreemptiveBasicAuthScheme();
+        basicAuthScheme.setUserName(username);
+        basicAuthScheme.setPassword(password);
+        return baseSpecBuilder().setAuth(basicAuthScheme).build();
+//        return baseSpecBuilder().setAuth(RestAssured.preemptive().basic("admin", "admin"))
+//                .build();
+//        return baseSpecBuilder().build();
     }
 }

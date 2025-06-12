@@ -2,22 +2,30 @@ package com.todo.get;
 
 
 import com.todo.BaseTest;
+import com.todo.requests.search.SearchRequest;
+import com.todo.specs.RequestSpec;
 import io.qameta.allure.*;
-import io.qameta.allure.restassured.AllureRestAssured;
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
-import org.junit.jupiter.api.Assertions;
+import org.apache.http.HttpStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.hasSize;
+
+import static com.todo.asserts.TodoAttributesAssert.assertTodoAttributes;
+import static com.todo.constants.ErrorMessages.INVALID_QUERY_STRING;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import com.todo.models.Todo;
+import com.todo.respvalidators.ValidatedBaseResponse;
 
 @Epic("TODO Management")
 @Feature("Get Todos API")
 public class GetTodosTests extends BaseTest {
+
+    private RequestSpec requestSpec = new RequestSpec(ContentType.JSON);
+    private SearchRequest searchRequest = new SearchRequest(requestSpec.unauthSpec());
 
     @BeforeEach
     public void setupEach() {
@@ -27,14 +35,9 @@ public class GetTodosTests extends BaseTest {
     @Test
     @Description("Получение пустого списка TODO, когда база данных пуста")
     public void testGetTodosWhenDatabaseIsEmpty() {
-        given()
-                .filter(new AllureRestAssured())
-                .when()
-                .get("/todos")
-                .then()
-                .statusCode(200)
-                .contentType(ContentType.JSON)
-                .body("", hasSize(0));
+        Todo[] todos = getAllTodos();
+        int lengthOfEmptyArray = 0;
+        assertEquals(lengthOfEmptyArray, todos.length);
     }
 
     @Test
@@ -47,27 +50,12 @@ public class GetTodosTests extends BaseTest {
         createTodo(todo1);
         createTodo(todo2);
 
-        Response response =
-                given()
-                        .filter(new AllureRestAssured())
-                        .when()
-                        .get("/todos")
-                        .then()
-                        .statusCode(200)
-                        .contentType("application/json")
-                        .body("", hasSize(2))
-                        .extract().response();
+        Todo[] todos = getAllTodos();
+        int lengthOfArray = 2;
+        assertEquals(lengthOfArray, todos.length);
 
-        // Дополнительная проверка содержимого
-        Todo[] todos = response.getBody().as(Todo[].class);
-
-        Assertions.assertEquals(1, todos[0].getId());
-        Assertions.assertEquals("Task 1", todos[0].getText());
-        Assertions.assertFalse(todos[0].isCompleted());
-
-        Assertions.assertEquals(2, todos[1].getId());
-        Assertions.assertEquals("Task 2", todos[1].getText());
-        Assertions.assertTrue(todos[1].isCompleted());
+        assertTodoAttributes(todo1, todos[0]);
+        assertTodoAttributes(todo2, todos[1]);
     }
 
     @Test
@@ -78,91 +66,59 @@ public class GetTodosTests extends BaseTest {
             createTodo(new Todo(i, "Task " + i, i % 2 == 0));
         }
 
-        Response response =
-                given()
-                        .filter(new AllureRestAssured())
-                        .queryParam("offset", 2)
-                        .queryParam("limit", 2)
-                        .when()
-                        .get("/todos")
-                        .then()
-                        .statusCode(200)
-                        .contentType("application/json")
-                        .body("", hasSize(2))
-                        .extract().response();
+        int offset = 2;
+        int limit = 2;
+        Response response = searchRequest.readAll(offset, limit);
+        ValidatedBaseResponse validatedBaseResponse = new ValidatedBaseResponse(response);
+        validatedBaseResponse.assertStatusCode(HttpStatus.SC_OK);
+        Todo[] todos = validatedBaseResponse.extractResponse(Todo[].class);
+        int lengthOfArray = 2;
+        assertEquals(lengthOfArray, todos.length);
 
         // Проверяем, что получили задачи с id 3 и 4
-        Todo[] todos = response.getBody().as(Todo[].class);
+        assertEquals(3, todos[0].getId());
+        assertEquals("Task 3", todos[0].getText());
 
-        Assertions.assertEquals(3, todos[0].getId());
-        Assertions.assertEquals("Task 3", todos[0].getText());
-
-        Assertions.assertEquals(4, todos[1].getId());
-        Assertions.assertEquals("Task 4", todos[1].getText());
+        assertEquals(4, todos[1].getId());
+        assertEquals("Task 4", todos[1].getText());
     }
 
     @Test
     @DisplayName("Передача некорректных значений в offset и limit")
     public void testGetTodosWithInvalidOffsetAndLimit() {
         // Тест с отрицательным offset
-        given()
-                .filter(new AllureRestAssured())
-                .queryParam("offset", -1)
-                .queryParam("limit", 2)
-                .when()
-                .get("/todos")
-                .then()
-                .statusCode(400)
-                .contentType("text/plain")
-                .body(containsString("Invalid query string"));
+        requestSpec = new RequestSpec(ContentType.ANY);
+        searchRequest = new SearchRequest(requestSpec.unauthSpec());
+
+        Response response = searchRequest.readAll(-1, 2);
+        ValidatedBaseResponse validatedBaseResponse = new ValidatedBaseResponse(response);
+        validatedBaseResponse.assertStatusCode(HttpStatus.SC_BAD_REQUEST);
+        assertTrue(validatedBaseResponse.extractErrorResponse().contains(INVALID_QUERY_STRING));
 
         // Тест с нечисловым limit
-        given()
-                .filter(new AllureRestAssured())
-                .queryParam("offset", 0)
-                .queryParam("limit", "abc")
-                .when()
-                .get("/todos")
-                .then()
-                .statusCode(400)
-                .contentType("text/plain")
-                .body(containsString("Invalid query string"));
+        response = searchRequest.readAll(0, "abc");
+        validatedBaseResponse = new ValidatedBaseResponse(response);
+        validatedBaseResponse.assertStatusCode(HttpStatus.SC_BAD_REQUEST);
+        assertTrue(validatedBaseResponse.extractErrorResponse().contains(INVALID_QUERY_STRING));
 
         // Тест с отсутствующим значением offset
-        given()
-                .filter(new AllureRestAssured())
-                .queryParam("offset", "")
-                .queryParam("limit", 2)
-                .when()
-                .get("/todos")
-                .then()
-                .statusCode(400)
-                .contentType("text/plain")
-                .body(containsString("Invalid query string"));
+        response = searchRequest.readAll("", 2);
+        validatedBaseResponse = new ValidatedBaseResponse(response);
+        validatedBaseResponse.assertStatusCode(HttpStatus.SC_BAD_REQUEST);
+        assertTrue(validatedBaseResponse.extractErrorResponse().contains(INVALID_QUERY_STRING));
     }
 
     @Test
     @DisplayName("Проверка ответа при превышении максимально допустимого значения limit")
     public void testGetTodosWithExcessiveLimit() {
         // Создаем 10 TODO
-        for (int i = 1; i <= 10; i++) {
+        int allCount = 10;
+        for (int i = 1; i <= allCount; i++) {
             createTodo(new Todo(i, "Task " + i, i % 2 == 0));
         }
-
-        Response response =
-                given()
-                        .filter(new AllureRestAssured())
-                        .queryParam("limit", 1000)
-                        .when()
-                        .get("/todos")
-                        .then()
-                        .statusCode(200)
-                        .contentType("application/json")
-                        .extract().response();
-
-        Todo[] todos = response.getBody().as(Todo[].class);
-
-        // Проверяем, что вернулось 10 задач
-        Assertions.assertEquals(10, todos.length);
+        int maxLimit = 1000;
+        Response response = searchRequest.readAll(null, maxLimit);
+        ValidatedBaseResponse validatedBaseResponse = new ValidatedBaseResponse(response);
+        validatedBaseResponse.assertStatusCode(HttpStatus.SC_BAD_REQUEST);
     }
 }

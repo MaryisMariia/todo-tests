@@ -1,18 +1,24 @@
 package com.todo.put;
 
+import com.todo.asserts.TodoExistenceAssert;
 import com.todo.BaseTest;
-import io.qameta.allure.restassured.AllureRestAssured;
-import io.restassured.filter.log.ResponseLoggingFilter;
+import com.todo.requests.TodoBaseRequest;
+import com.todo.specs.RequestSpec;
 import io.restassured.http.ContentType;
-import org.junit.jupiter.api.Assertions;
+import io.restassured.response.Response;
+import org.apache.http.HttpStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.*;
+
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import com.todo.models.Todo;
+import com.todo.respvalidators.ValidatedBaseResponse;
 
 public class PutTodosTests extends BaseTest {
+
+    private final RequestSpec requestSpec = new RequestSpec(ContentType.JSON);
+    private final TodoBaseRequest todoRequest = new TodoBaseRequest(requestSpec.unauthSpec());
 
     @BeforeEach
     public void setupEach() {
@@ -32,31 +38,12 @@ public class PutTodosTests extends BaseTest {
         Todo updatedTodo = new Todo(1, "Updated Task", true);
 
         // Отправляем PUT запрос для обновления
-        given()
-                .filter(new ResponseLoggingFilter())
-                .contentType(ContentType.JSON)
-                .body(updatedTodo)
-                .when()
-                .put("/todos/" + updatedTodo.getId())
-                .then()
-                .statusCode(200);
-                //.contentType(ContentType.JSON)
-//                .body("id", equalTo(1))
-//                .body("text", equalTo("Updated Task"))
-//                .body("completed", equalTo(true));
+        Response response = todoRequest.update(updatedTodo.getId(), updatedTodo);
+        ValidatedBaseResponse validatedBaseResponse = new ValidatedBaseResponse(response);
+        validatedBaseResponse.assertStatusCode(HttpStatus.SC_OK);
 
         // Проверяем, что данные были обновлены
-        Todo[] todos = given()
-                .when()
-                .get("/todos")
-                .then()
-                .statusCode(200)
-                .extract()
-                .as(Todo[].class);
-
-        Assertions.assertEquals(1, todos.length);
-        Assertions.assertEquals("Updated Task", todos[0].getText());
-        Assertions.assertTrue(todos[0].isCompleted());
+        TodoExistenceAssert.assertTodoExistence(updatedTodo);
     }
 
     /**
@@ -67,16 +54,10 @@ public class PutTodosTests extends BaseTest {
         // Обновленные данные для несуществующего TODO
         Todo updatedTodo = new Todo(999, "Non-existent Task", true);
 
-        given()
-                .filter(new AllureRestAssured())
-                .contentType(ContentType.JSON)
-                .body(updatedTodo)
-                .when()
-                .put("/todos/" + updatedTodo.getId())
-                .then()
-                .statusCode(404)
-                //.contentType(ContentType.TEXT)
-                .body(is(notNullValue()));
+        Response response = todoRequest.update(updatedTodo.getId(), updatedTodo);
+        ValidatedBaseResponse validatedBaseResponse = new ValidatedBaseResponse(response);
+        validatedBaseResponse.assertStatusCode(HttpStatus.SC_NOT_FOUND);
+        assertNotNull(validatedBaseResponse.extractErrorResponse());
     }
 
     /**
@@ -84,23 +65,18 @@ public class PutTodosTests extends BaseTest {
      */
     @Test
     public void testUpdateTodoWithMissingFields() {
+        long id = 2;
         // Создаем TODO для обновления
-        Todo originalTodo = new Todo(2, "Task to Update", false);
+        Todo originalTodo = new Todo(id, "Task to Update", false);
         createTodo(originalTodo);
 
         // Обновленные данные с отсутствующим полем 'text'
-        String invalidTodoJson = "{ \"id\": 2, \"completed\": true }";
+        String invalidTodoJson = "{ \"id\": " + id + ", \"completed\": true }";
 
-        given()
-                .filter(new AllureRestAssured())
-                .contentType(ContentType.JSON)
-                .body(invalidTodoJson)
-                .when()
-                .put("/todos/2")
-                .then()
-                .statusCode(401);
-                //.contentType(ContentType.JSON)
-                //.body("error", containsString("Missing required field 'text'"));
+        Response response = todoRequest.update(id, invalidTodoJson);
+        ValidatedBaseResponse validatedBaseResponse = new ValidatedBaseResponse(response);
+        validatedBaseResponse.assertStatusCode(HttpStatus.SC_UNAUTHORIZED);
+        assertNotNull(validatedBaseResponse.extractErrorResponse());
     }
 
     /**
@@ -109,20 +85,16 @@ public class PutTodosTests extends BaseTest {
     @Test
     public void testUpdateTodoWithInvalidDataTypes() {
         // Создаем TODO для обновления
-        Todo originalTodo = new Todo(3, "Another Task", false);
+        long id = 3;
+        Todo originalTodo = new Todo(id, "Another Task", false);
         createTodo(originalTodo);
 
         // Обновленные данные с некорректным типом поля 'completed'
-        String invalidTodoJson = "{ \"id\": 3, \"text\": \"Updated Task\", \"completed\": \"notBoolean\" }";
+        String invalidTodoJson = "{ \"id\": " + id + ", \"text\": \"Updated Task\", \"completed\": \"notBoolean\" }";
 
-        given()
-                .filter(new AllureRestAssured())
-                .contentType(ContentType.JSON)
-                .body(invalidTodoJson)
-                .when()
-                .put("/todos/3")
-                .then()
-                .statusCode(401);
+        Response response = todoRequest.update(id, invalidTodoJson);
+        ValidatedBaseResponse validatedBaseResponse = new ValidatedBaseResponse(response);
+        validatedBaseResponse.assertStatusCode(HttpStatus.SC_UNAUTHORIZED);
     }
 
     /**
@@ -131,30 +103,16 @@ public class PutTodosTests extends BaseTest {
     @Test
     public void testUpdateTodoWithoutChangingData() {
         // Создаем TODO для обновления
-        Todo originalTodo = new Todo(4, "Task without Changes", false);
+        long id = 4;
+        Todo originalTodo = new Todo(id, "Task without Changes", false);
         createTodo(originalTodo);
 
         // Отправляем PUT запрос с теми же данными
-        given()
-                .filter(new AllureRestAssured())
-                .contentType(ContentType.JSON)
-                .body(originalTodo)
-                .when()
-                .put("/todos/4")
-                .then()
-                .statusCode(200);
-
+        Response response = todoRequest.update(id, originalTodo);
+        ValidatedBaseResponse validatedBaseResponse = new ValidatedBaseResponse(response);
+        validatedBaseResponse.assertStatusCode(HttpStatus.SC_OK);
 
         // Проверяем, что данные не изменились
-        Todo[] todo = given()
-                .when()
-                .get("/todos")
-                .then()
-                .statusCode(200)
-                .extract()
-                .as(Todo[].class);
-
-        Assertions.assertEquals("Task without Changes", todo[0].getText());
-        Assertions.assertFalse(todo[0].isCompleted());
+        TodoExistenceAssert.assertTodoExistence(originalTodo);
     }
 }

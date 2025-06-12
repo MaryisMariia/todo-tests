@@ -1,14 +1,22 @@
 package com.todo.delete;
 
+import com.todo.asserts.TodoExistenceAssert;
 import com.todo.BaseTest;
 
+import com.todo.requests.TodoBaseRequest;
+import com.todo.specs.RequestSpec;
 import io.qameta.allure.restassured.AllureRestAssured;
-import org.junit.jupiter.api.Assertions;
+import io.restassured.http.ContentType;
+import io.restassured.response.Response;
+import org.apache.http.HttpStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
 import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.*;
+import static org.junit.jupiter.api.Assertions.*;
+
 import com.todo.models.Todo;
+import com.todo.respvalidators.ValidatedBaseResponse;
 
 public class DeleteTodosTests extends BaseTest {
 
@@ -27,35 +35,18 @@ public class DeleteTodosTests extends BaseTest {
         createTodo(todo);
 
         // Отправляем DELETE запрос с корректной авторизацией
-        given()
-                .filter(new AllureRestAssured())
-                .auth()
-                .preemptive()
-                .basic("admin", "admin")
-                .when()
-                .delete("/todos/" + todo.getId())
-                .then()
-                .statusCode(204)
-                .body(is(emptyOrNullString())); // Проверяем, что тело ответа пустое
+        RequestSpec requestSpec = new RequestSpec(ContentType.JSON);
+        TodoBaseRequest todoRequest = new TodoBaseRequest(requestSpec.authSpec());
 
-        // Получаем список всех TODO и проверяем, что удаленная задача отсутствует
-        Todo[] todos = given()
-                .when()
-                .get("/todos")
-                .then()
-                .statusCode(200)
-                .extract()
-                .as(Todo[].class);
+        // Отправляем POST запрос для создания нового TODO
+        Response resp = todoRequest.delete(todo.getId());
+        ValidatedBaseResponse validatedBaseResponse = new ValidatedBaseResponse(resp);
+        validatedBaseResponse.assertStatusCode(HttpStatus.SC_NO_CONTENT);
+        // Проверяем, что тело ответа пустое
+        assertTrue(validatedBaseResponse.extractErrorResponse().isEmpty());
 
-        // Проверяем, что удаленная задача отсутствует в списке
-        boolean found = false;
-        for (Todo t : todos) {
-            if (t.getId() == todo.getId()) {
-                found = true;
-                break;
-            }
-        }
-        Assertions.assertFalse(found, "Удаленная задача все еще присутствует в списке TODO");
+        // проверяем, что удаленная задача отсутствует
+        TodoExistenceAssert.assertTodoNonExistence(todo);
     }
 
     /**
@@ -68,33 +59,16 @@ public class DeleteTodosTests extends BaseTest {
         createTodo(todo);
 
         // Отправляем DELETE запрос без заголовка Authorization
-        given()
-                .filter(new AllureRestAssured())
-                .when()
-                .delete("/todos/" + todo.getId())
-                .then()
-                .statusCode(401);
-                //.contentType(ContentType.JSON)
-                //.body("error", notNullValue()); // Проверяем наличие сообщения об ошибке
+        RequestSpec requestSpec = new RequestSpec(ContentType.JSON);
+        TodoBaseRequest todoRequest = new TodoBaseRequest(requestSpec.unauthSpec());
+
+        // Отправляем POST запрос для создания нового TODO
+        Response resp = todoRequest.delete(todo.getId());
+        ValidatedBaseResponse validatedBaseResponse = new ValidatedBaseResponse(resp);
+        validatedBaseResponse.assertStatusCode(HttpStatus.SC_UNAUTHORIZED);
 
         // Проверяем, что TODO не было удалено
-        Todo[] todos = given()
-                .when()
-                .get("/todos")
-                .then()
-                .statusCode(200)
-                .extract()
-                .as(Todo[].class);
-
-        // Проверяем, что задача все еще присутствует в списке
-        boolean found = false;
-        for (Todo t : todos) {
-            if (t.getId() == todo.getId()) {
-                found = true;
-                break;
-            }
-        }
-        Assertions.assertTrue(found, "Задача отсутствует в списке TODO, хотя не должна была быть удалена");
+        TodoExistenceAssert.assertTodoExistence(todo);
     }
 
     /**
@@ -107,36 +81,18 @@ public class DeleteTodosTests extends BaseTest {
         createTodo(todo);
 
         // Отправляем DELETE запрос с некорректной авторизацией
-        given()
-                .filter(new AllureRestAssured())
-                .auth()
-                .preemptive()
-                .basic("invalidUser", "invalidPass")
-                .when()
-                .delete("/todos/" + todo.getId())
-                .then()
-                .statusCode(401);
-//                .contentType(ContentType.JSON)
-//                .body("error", notNullValue());
+        String invalidUsername = "invalidUser";
+        String invalidPassword = "invalidPass";
+        RequestSpec requestSpec = new RequestSpec(ContentType.JSON);
+        TodoBaseRequest todoRequest = new TodoBaseRequest(requestSpec.authSpec(invalidUsername, invalidPassword));
+
+        // Отправляем POST запрос для создания нового TODO
+        Response resp = todoRequest.delete(todo.getId());
+        ValidatedBaseResponse validatedBaseResponse = new ValidatedBaseResponse(resp);
+        validatedBaseResponse.assertStatusCode(HttpStatus.SC_UNAUTHORIZED);
 
         // Проверяем, что TODO не было удалено
-        Todo[] todos = given()
-                .when()
-                .get("/todos")
-                .then()
-                .statusCode(200)
-                .extract()
-                .as(Todo[].class);
-
-        // Проверяем, что задача все еще присутствует в списке
-        boolean found = false;
-        for (Todo t : todos) {
-            if (t.getId() == todo.getId()) {
-                found = true;
-                break;
-            }
-        }
-        Assertions.assertTrue(found, "Задача отсутствует в списке TODO, хотя не должна была быть удалена");
+        TodoExistenceAssert.assertTodoExistence(todo);
     }
 
     /**
@@ -145,28 +101,19 @@ public class DeleteTodosTests extends BaseTest {
     @Test
     public void testDeleteNonExistentTodo() {
         // Отправляем DELETE запрос для несуществующего TODO с корректной авторизацией
-        given()
-                .filter(new AllureRestAssured())
-                .auth()
-                .preemptive()
-                .basic("admin", "admin")
-                .when()
-                .delete("/todos/999")
-                .then()
-                .statusCode(404);
-//                .contentType(ContentType.JSON)
-//                .body("error", notNullValue());
+        RequestSpec requestSpec = new RequestSpec(ContentType.JSON);
+        TodoBaseRequest todoRequest = new TodoBaseRequest(requestSpec.authSpec());
+
+        long nonExistedId = 999;
+        Response resp = todoRequest.delete(nonExistedId);
+        ValidatedBaseResponse validatedBaseResponse = new ValidatedBaseResponse(resp);
+        validatedBaseResponse.assertStatusCode(HttpStatus.SC_NOT_FOUND);
 
         // Дополнительно можем проверить, что список TODO не изменился
-        Todo[] todos = given()
-                .when()
-                .get("/todos")
-                .then()
-                .statusCode(200)
-                .extract()
-                .as(Todo[].class);
+        Todo[] todos = getAllTodos();
 
         // В данном случае, поскольку мы не добавляли задач с id 999, список должен быть пуст или содержать только ранее добавленные задачи
+        assertEquals(0, todos.length);
     }
 
     /**

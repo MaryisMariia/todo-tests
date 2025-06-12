@@ -1,47 +1,51 @@
 package com.todo;
 
+import com.todo.requests.TodoBaseRequest;
+import com.todo.requests.search.SearchRequest;
+import com.todo.specs.RequestSpec;
 import io.restassured.RestAssured;
+import io.restassured.http.ContentType;
+import io.restassured.response.Response;
+import org.apache.http.HttpStatus;
 import org.junit.jupiter.api.BeforeAll;
 import com.todo.models.Todo;
-
-import static io.restassured.RestAssured.given;
+import com.todo.respvalidators.ValidatedBaseResponse;
 
 public class BaseTest {
+
+    RequestSpec requestSpec = new RequestSpec(ContentType.JSON);
+
     @BeforeAll
     public static void setup() {
         RestAssured.baseURI = "http://localhost";
         RestAssured.port = 8080;
     }
 
-    protected void createTodo(Todo todo) {
-        given()
-                .contentType("application/json")
-                .body(todo)
-                .when()
-                .post("/todos")
-                .then()
-                .statusCode(201);
+    protected Response createTodo(Todo todo) {
+        TodoBaseRequest todoRequest = new TodoBaseRequest(requestSpec.unauthSpec());
+
+        // Отправляем POST запрос для создания нового TODO
+        return todoRequest.create(todo);
     }
 
     protected void deleteAllTodos() {
 
-        Todo[] todos = given()
-                .when()
-                .get("/todos")
-                .then()
-                .statusCode(200)
-                .extract()
-                .as(Todo[].class);
+        Todo[] todos = getAllTodos();
 
         for (Todo todo : todos) {
-            given()
-                    .auth()
-                    .preemptive()
-                    .basic("admin", "admin")
-                    .when()
-                    .delete("/todos/" + todo.getId())
-                    .then()
-                    .statusCode(204);
+            RequestSpec requestSpec = new RequestSpec(ContentType.JSON);
+            TodoBaseRequest todoRequest = new TodoBaseRequest(requestSpec.authSpec());
+            Response resp = todoRequest.delete(todo.getId());
+            ValidatedBaseResponse validatedBaseResponse = new ValidatedBaseResponse(resp);
+            validatedBaseResponse.assertStatusCode(HttpStatus.SC_NO_CONTENT);
         }
+    }
+
+    protected Todo[] getAllTodos() {
+        SearchRequest searchRequest = new SearchRequest(requestSpec.authSpec());
+        Response response = searchRequest.readAll();
+        ValidatedBaseResponse validatedBaseResponse = new ValidatedBaseResponse(response);
+        validatedBaseResponse.assertStatusCode(HttpStatus.SC_OK);
+        return validatedBaseResponse.extractResponse(Todo[].class);
     }
 }
