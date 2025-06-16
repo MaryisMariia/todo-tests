@@ -19,6 +19,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.todo.models.Todo;
 import com.todo.respvalidators.ValidatedBaseResponse;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 @Epic("TODO Management")
 @Feature("Get Todos API")
@@ -58,16 +60,15 @@ public class GetTodosTests extends BaseTest {
         assertTodoAttributes(todo2, todos[1]);
     }
 
-    @Test
+    @ParameterizedTest
+    @CsvSource({"2, 2"})
     @Description("Использование параметров offset и limit для пагинации")
-    public void testGetTodosWithOffsetAndLimit() {
+    public void testGetTodosWithOffsetAndLimit(int offset, int limit) {
         // Создаем 5 TODO
         for (int i = 1; i <= 5; i++) {
             createTodo(new Todo(i, "Task " + i, i % 2 == 0));
         }
 
-        int offset = 2;
-        int limit = 2;
         Response response = searchRequest.readAll(offset, limit);
         ValidatedBaseResponse validatedBaseResponse = new ValidatedBaseResponse(response);
         validatedBaseResponse.assertStatusCode(HttpStatus.SC_OK);
@@ -83,27 +84,16 @@ public class GetTodosTests extends BaseTest {
         assertEquals("Task 4", todos[1].getText());
     }
 
-    @Test
+    @ParameterizedTest
+    @CsvSource({"-1, 2", "0, abc", ", 2"})
     @DisplayName("Передача некорректных значений в offset и limit")
-    public void testGetTodosWithInvalidOffsetAndLimit() {
+    public void testGetTodosWithInvalidOffsetAndLimit(Object offset, Object limit) {
         // Тест с отрицательным offset
         requestSpec = new RequestSpec(ContentType.ANY);
         searchRequest = new SearchRequest(requestSpec.unauthSpec());
 
-        Response response = searchRequest.readAll(-1, 2);
+        Response response = searchRequest.readAll(offset, limit);
         ValidatedBaseResponse validatedBaseResponse = new ValidatedBaseResponse(response);
-        validatedBaseResponse.assertStatusCode(HttpStatus.SC_BAD_REQUEST);
-        assertTrue(validatedBaseResponse.extractErrorResponse().contains(INVALID_QUERY_STRING));
-
-        // Тест с нечисловым limit
-        response = searchRequest.readAll(0, "abc");
-        validatedBaseResponse = new ValidatedBaseResponse(response);
-        validatedBaseResponse.assertStatusCode(HttpStatus.SC_BAD_REQUEST);
-        assertTrue(validatedBaseResponse.extractErrorResponse().contains(INVALID_QUERY_STRING));
-
-        // Тест с отсутствующим значением offset
-        response = searchRequest.readAll("", 2);
-        validatedBaseResponse = new ValidatedBaseResponse(response);
         validatedBaseResponse.assertStatusCode(HttpStatus.SC_BAD_REQUEST);
         assertTrue(validatedBaseResponse.extractErrorResponse().contains(INVALID_QUERY_STRING));
     }
