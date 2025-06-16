@@ -34,10 +34,9 @@ public class BaseTest {
 
         for (Todo todo : todos) {
             RequestSpec requestSpec = new RequestSpec(ContentType.JSON);
-            TodoBaseRequest todoRequest = new TodoBaseRequest(requestSpec.authSpec());
-            Response resp = todoRequest.delete(todo.getId());
-            ValidatedBaseResponse validatedBaseResponse = new ValidatedBaseResponse(resp);
-            validatedBaseResponse.assertStatusCode(HttpStatus.SC_NO_CONTENT);
+            new ValidatedBaseResponse(new TodoBaseRequest(requestSpec.authSpec())
+                    .delete(todo.getId()))
+                    .assertStatusCode(HttpStatus.SC_NO_CONTENT);
         }
     }
 

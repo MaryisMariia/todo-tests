@@ -42,13 +42,9 @@ public class RequestSpec {
     }
 
     public RequestSpecification authSpec(String username, String password) {
-        // Почему то не утсанавливается таким образом
         PreemptiveBasicAuthScheme basicAuthScheme = new PreemptiveBasicAuthScheme();
         basicAuthScheme.setUserName(username);
         basicAuthScheme.setPassword(password);
         return baseSpecBuilder().setAuth(basicAuthScheme).build();
-//        return baseSpecBuilder().setAuth(RestAssured.preemptive().basic("admin", "admin"))
-//                .build();
-//        return baseSpecBuilder().build();
     }
 }
