@@ -1,4 +1,4 @@
-package com.todo.annotations;
+package com.todo.annotations.mobile;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -7,6 +7,5 @@ import java.lang.annotation.Target;
 
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface PrepareTodo {
-    int value();
+public @interface Mobile {
 }

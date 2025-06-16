@@ -2,8 +2,8 @@ package com.todo.get;
 
 
 import com.todo.BaseTest;
-import com.todo.annotations.DataPreparationExtension;
-import com.todo.annotations.PrepareTodo;
+import com.todo.annotations.datapreparation.DataPreparationExtension;
+import com.todo.annotations.datapreparation.PrepareTodo;
 import io.qameta.allure.*;
 import io.qameta.allure.restassured.AllureRestAssured;
 import io.restassured.http.ContentType;

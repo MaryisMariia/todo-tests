@@ -1,5 +1,6 @@
 package com.todo;
 
+import com.todo.config.ConfigManager;
 import com.todo.requests.TodoRequest;
 import com.todo.requests.TodoRequester;
 import com.todo.specs.request.RequestSpec;
@@ -14,12 +15,13 @@ import org.junit.jupiter.api.BeforeEach;
 import static io.restassured.RestAssured.given;
 
 public class BaseTest {
-    protected TodoRequester todoRequester;
+
+    protected static TodoRequester todoRequester;
 
     @BeforeAll
     public static void setup() {
         RestAssured.defaultParser = Parser.JSON;
-        RestAssured.baseURI = "http://localhost";
+        RestAssured.baseURI = ConfigManager.getProperties().getProperty("BASE_URL");
         RestAssured.port = 8080;
     }
 

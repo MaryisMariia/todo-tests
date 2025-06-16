@@ -1,6 +1,8 @@
 package com.todo.post;
 
 import com.todo.BaseTest;
+import com.todo.annotations.mobile.Mobile;
+import com.todo.annotations.mobile.MobileExtension;
 import com.todo.models.Todo;
 import com.todo.models.TodoBuilder;
 import com.todo.specs.response.IncorrectDataResponse;
@@ -9,12 +11,14 @@ import io.restassured.http.ContentType;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.util.List;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
 
+@ExtendWith(MobileExtension.class)
 public class PostTodosTests extends BaseTest {
 
     @BeforeEach
@@ -83,6 +87,7 @@ public class PostTodosTests extends BaseTest {
      * TC3: Создание TODO с максимально допустимой длиной поля 'text'.
      */
     @Test
+    @Mobile
     public void testCreateTodoWithMaxLengthText() {
         // Предполагаем, что максимальная длина поля 'text' составляет 255 символов
         String maxLengthText = "A".repeat(255);
