@@ -1,4 +1,4 @@
-package com.todo.annotations;
+package com.todo.annotations.datapreparation;
 
 import com.todo.models.TodoBuilder;
 import com.todo.requests.TodoRequest;
