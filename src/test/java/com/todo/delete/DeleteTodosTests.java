@@ -3,11 +3,13 @@ package com.todo.delete;
 import com.todo.BaseTest;
 
 import io.qameta.allure.restassured.AllureRestAssured;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import static com.todo.generators.TestDataGenerator.generateTestData;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
+
 import com.todo.models.Todo;
 
 public class DeleteTodosTests extends BaseTest {
@@ -23,7 +25,7 @@ public class DeleteTodosTests extends BaseTest {
     @Test
     public void testDeleteExistingTodoWithValidAuth() {
         // Создаем TODO для удаления
-        Todo todo = new Todo(1, "Task to Delete", false);
+        Todo todo = generateTestData(Todo.class);
         createTodo(todo);
 
         // Отправляем DELETE запрос с корректной авторизацией
@@ -39,23 +41,7 @@ public class DeleteTodosTests extends BaseTest {
                 .body(is(emptyOrNullString())); // Проверяем, что тело ответа пустое
 
         // Получаем список всех TODO и проверяем, что удаленная задача отсутствует
-        Todo[] todos = given()
-                .when()
-                .get("/todos")
-                .then()
-                .statusCode(200)
-                .extract()
-                .as(Todo[].class);
-
-        // Проверяем, что удаленная задача отсутствует в списке
-        boolean found = false;
-        for (Todo t : todos) {
-            if (t.getId() == todo.getId()) {
-                found = true;
-                break;
-            }
-        }
-        Assertions.assertFalse(found, "Удаленная задача все еще присутствует в списке TODO");
+        todoExistenceAssert.assertTodoNonExistence(todo);
     }
 
     /**
@@ -64,7 +50,7 @@ public class DeleteTodosTests extends BaseTest {
     @Test
     public void testDeleteTodoWithoutAuthHeader() {
         // Создаем TODO для удаления
-        Todo todo = new Todo(2, "Task to Delete", false);
+        Todo todo = generateTestData(Todo.class);
         createTodo(todo);
 
         // Отправляем DELETE запрос без заголовка Authorization
@@ -74,27 +60,11 @@ public class DeleteTodosTests extends BaseTest {
                 .delete("/todos/" + todo.getId())
                 .then()
                 .statusCode(401);
-                //.contentType(ContentType.JSON)
-                //.body("error", notNullValue()); // Проверяем наличие сообщения об ошибке
+        //.contentType(ContentType.JSON)
+        //.body("error", notNullValue()); // Проверяем наличие сообщения об ошибке
 
         // Проверяем, что TODO не было удалено
-        Todo[] todos = given()
-                .when()
-                .get("/todos")
-                .then()
-                .statusCode(200)
-                .extract()
-                .as(Todo[].class);
-
-        // Проверяем, что задача все еще присутствует в списке
-        boolean found = false;
-        for (Todo t : todos) {
-            if (t.getId() == todo.getId()) {
-                found = true;
-                break;
-            }
-        }
-        Assertions.assertTrue(found, "Задача отсутствует в списке TODO, хотя не должна была быть удалена");
+        todoExistenceAssert.assertTodoExistence(todo);
     }
 
     /**
@@ -103,7 +73,7 @@ public class DeleteTodosTests extends BaseTest {
     @Test
     public void testDeleteTodoWithInvalidAuth() {
         // Создаем TODO для удаления
-        Todo todo = new Todo(3, "Task to Delete", false);
+        Todo todo = generateTestData(Todo.class);
         createTodo(todo);
 
         // Отправляем DELETE запрос с некорректной авторизацией
@@ -120,23 +90,7 @@ public class DeleteTodosTests extends BaseTest {
 //                .body("error", notNullValue());
 
         // Проверяем, что TODO не было удалено
-        Todo[] todos = given()
-                .when()
-                .get("/todos")
-                .then()
-                .statusCode(200)
-                .extract()
-                .as(Todo[].class);
-
-        // Проверяем, что задача все еще присутствует в списке
-        boolean found = false;
-        for (Todo t : todos) {
-            if (t.getId() == todo.getId()) {
-                found = true;
-                break;
-            }
-        }
-        Assertions.assertTrue(found, "Задача отсутствует в списке TODO, хотя не должна была быть удалена");
+        todoExistenceAssert.assertTodoExistence(todo);
     }
 
     /**
