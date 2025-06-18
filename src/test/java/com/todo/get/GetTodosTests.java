@@ -6,12 +6,11 @@ import com.todo.annotations.DataPreparationExtension;
 import com.todo.annotations.Mobile;
 import com.todo.annotations.MobileExecutionExtension;
 import com.todo.annotations.PrepareTodo;
+import com.todo.assertions.TodoAttributesAssert;
 import io.qameta.allure.*;
 import io.qameta.allure.restassured.AllureRestAssured;
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
-import org.apache.commons.lang3.RandomStringUtils;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -20,11 +19,11 @@ import static com.todo.generators.TestDataGenerator.generateTestData;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasSize;
+
 import com.todo.models.Todo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.util.List;
-import java.util.Random;
 
 @Epic("TODO Management")
 @Feature("Get Todos API")
@@ -65,7 +64,7 @@ public class GetTodosTests extends BaseTest {
 
         todo1.setText("arabic symbols");
 
-        Todo todo2 = new Todo(2, "Task 2", true);
+        Todo todo2 = generateTestData(Todo.class);
 
         createTodo(todo1);
         createTodo(todo2);
@@ -83,14 +82,9 @@ public class GetTodosTests extends BaseTest {
 
         // Дополнительная проверка содержимого
         Todo[] todos = response.getBody().as(Todo[].class);
-
-        Assertions.assertEquals(1, todos[0].getId());
-        Assertions.assertEquals("Task 1", todos[0].getText());
-        Assertions.assertFalse(todos[0].isCompleted());
-
-        Assertions.assertEquals(2, todos[1].getId());
-        Assertions.assertEquals("Task 2", todos[1].getText());
-        Assertions.assertTrue(todos[1].isCompleted());
+        TodoAttributesAssert todoAttributesAssert = new TodoAttributesAssert(softAssertions);
+        todoAttributesAssert.assertTodoAttributes(todo1, todos[0]);
+        todoAttributesAssert.assertTodoAttributes(todo2, todos[1]);
     }
 
     @Test
@@ -98,9 +92,9 @@ public class GetTodosTests extends BaseTest {
     @PrepareTodo(5)
     @Description("Использование параметров offset и limit для пагинации")
     public void testGetTodosWithOffsetAndLimit() {
-        List<Todo> todos = todoRequester.getValidatedRequest().readAll(2,2);
+        List<Todo> todos = todoRequester.getValidatedRequest().readAll(2, 2);
 
-        Assertions.assertEquals(todos.size(), 2);
+        softAssertions.assertThat(todos.size()).isEqualTo(2);
     }
 
     @Test
@@ -165,6 +159,6 @@ public class GetTodosTests extends BaseTest {
         Todo[] todos = response.getBody().as(Todo[].class);
 
         // Проверяем, что вернулось 10 задач
-        Assertions.assertEquals(10, todos.length);
+        softAssertions.assertThat(10).isEqualTo(todos.length);
     }
 }
