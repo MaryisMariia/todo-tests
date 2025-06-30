@@ -7,22 +7,10 @@ import com.todo.annotations.Mobile;
 import com.todo.annotations.PrepareTodo;
 import com.todo.specs.response.IncorrectDataResponse;
 import io.qameta.allure.*;
-import io.qameta.allure.restassured.AllureRestAssured;
-import io.restassured.http.ContentType;
-import io.restassured.response.Response;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import static com.todo.generators.TestDataGenerator.generateTestData;
-import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.hasSize;
-import com.todo.models.Todo;
 import org.junit.jupiter.api.extension.ExtendWith;
-
-import java.util.List;
 
 @Epic("TODO Management")
 @Feature("Get Todos API")
@@ -48,7 +36,7 @@ public class GetTodosTests extends BaseTest {
     }
 
     @Test
-    @DisplayName("Передача некорректных значений в offset и limit")
+    @DisplayName("Авторизованный юзер не может передать некорректные значения в offset и limit")
     public void testGetTodosWithInvalidOffsetAndLimit() {
         todoRequester.getRequest().readAll(-1,-1)
                 .then().assertThat().spec(IncorrectDataResponse.offsetOrLimitHaveIncorrectValues());

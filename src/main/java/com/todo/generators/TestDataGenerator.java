@@ -36,7 +36,7 @@ public class TestDataGenerator {
         }
     }
 
-    private static String generateRandomString(int length) {
+    public static String generateRandomString(int length) {
         String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
         StringBuilder builder = new StringBuilder();
         for (int i = 0; i < length; i++) {
