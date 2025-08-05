@@ -12,18 +12,21 @@ compileTestJava {
 }
 
 def restAssuredVersion = "5.5.0",
-        slf4jVersion = "2.0.16",
-        allureVersion = "2.20.1"
-
+    slf4jVersion = "2.0.16",
+    allureVersion = "2.20.1",
+    lombokVersion = "1.18.32",
+    assertjVersion = "3.6.1"
 
 
 dependencies {
-    testImplementation (
+    testImplementation(
+            "org.projectlombok:lombok:$lombokVersion",
             "io.rest-assured:rest-assured:$restAssuredVersion",
             "io.rest-assured:json-schema-validator:$restAssuredVersion",
             "io.qameta.allure:allure-rest-assured:$allureVersion",
             "org.junit.jupiter:junit-jupiter:5.9.2",
-            "org.slf4j:slf4j-simple:$slf4jVersion"
+            "org.slf4j:slf4j-simple:$slf4jVersion",
+            "org.assertj:assertj-core:$assertjVersion"
     )
 }
 
